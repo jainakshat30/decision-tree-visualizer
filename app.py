@@ -41,16 +41,16 @@ def get_dataset(dataset_name, user_file):
         feature_names = ["Feature1", "Feature2"]
     elif dataset_name == "Iris":
         data = load_iris()
-        X, y = data.data[:, :2], data.target
-        feature_names = data.feature_names[:2]
+        X, y = data.data, data.target
+        feature_names = data.feature_names
     elif dataset_name == "Wine":
         data = load_wine()
-        X, y = data.data[:, :2], data.target
-        feature_names = data.feature_names[:2]
+        X, y = data.data, data.target
+        feature_names = data.feature_names
     elif dataset_name == "Breast Cancer":
         data = load_breast_cancer()
-        X, y = data.data[:, :2], data.target
-        feature_names = data.feature_names[:2]
+        X, y = data.data, data.target
+        feature_names = data.feature_names
     elif dataset_name == "Upload Your Own" and user_file is not None:
         df = pd.read_csv(user_file)
         return df, None, None
@@ -90,7 +90,14 @@ if dataset_name == "Upload Your Own":
     feature_names = selected_features
 else:
     X, y, feature_names = get_dataset(dataset_name, user_file)
-    show_plot = X.shape[1] == 2
+    selected_features = st.multiselect("📊 Select 2 Features for Plotting", feature_names, default=feature_names[:2])
+    if len(selected_features) < 2:
+        st.warning("Please select 2 features for plotting.")
+        st.stop()
+    feature_indices = [feature_names.index(f) for f in selected_features]
+    X = X[:, feature_indices]
+    feature_names = selected_features
+    show_plot = True
 
 scale_data = model_name in ["Logistic Regression", "K-Nearest Neighbors"]
 # Automatically scale data if algorithm requires it
@@ -162,13 +169,13 @@ def plot_decision_boundary(clf, X, y, model_name=""):
     Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
     Z = Z.reshape(xx.shape)
 
-    plt.figure(figsize=(10, 6))
-    plt.contourf(xx, yy, Z, alpha=0.4, cmap='coolwarm')
-    sns.scatterplot(x=X[:, 0], y=X[:, 1], hue=y, palette='coolwarm', edgecolor='k')
-    plt.xlabel("Feature 1")
-    plt.ylabel("Feature 2")
-    plt.title(f"{model_name} Classification Boundary")
-    st.pyplot(plt)
+    fig, ax = plt.subplots(figsize=(10, 6))
+    contour = ax.contourf(xx, yy, Z, alpha=0.4, cmap='coolwarm')
+    sns.scatterplot(x=X[:, 0], y=X[:, 1], hue=y, palette='coolwarm', edgecolor='k', ax=ax)
+    ax.set_xlabel("Feature 1")
+    ax.set_ylabel("Feature 2")
+    ax.set_title(f"{model_name} Classification Boundary")
+    st.pyplot(fig)
 
 if 'show_plot' in locals() and show_plot and st.checkbox("Show Decision Boundary", value=True):
     plot_decision_boundary(model, X_test, y_test, model_name)
